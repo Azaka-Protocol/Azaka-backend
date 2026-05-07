@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trade {
+  id             String       @id
+  exporter       String
+  importer       String
+  issuingBank    String?
+  confirmingBank String?
+  asset          String
+  amount         String
+  status         TradeStatus
+  requiredDocs   DocType[]
+  expiryLedger   Int
+  createdAt      DateTime
+  settledAt      DateTime?
+  cancelledAt    DateTime?
+  expiredAt      DateTime?
+  events         TradeEvent[]
+  documents      Document[]
+
+  @@index([exporter])
+  @@index([importer])
+  @@index([status])
+  @@index([expiryLedger])
+}
+
+model Document {
+  id          String    @id @default(cuid())
+  tradeId     String
+  trade       Trade     @relation(fields: [tradeId], references: [id])
+  docType     DocType
+  hash        String
+  ipfsCid     String?
+  submittedBy String
+  submittedAt DateTime
+  signers     String[]
+  verified    Boolean   @default(false)
+  verifiedAt  DateTime?
+
+  @@index([tradeId])
+  @@index([submittedBy])
+}
+
+model TradeEvent {
+  id        String   @id @default(cuid())
+  tradeId   String
+  trade     Trade    @relation(fields: [tradeId], references: [id])
+  eventType String
+  actor     String?
+  meta      Json?
+  ledger    Int
+  timestamp DateTime
+
+  @@index([tradeId])
+  @@index([eventType])
+  @@index([timestamp])
+}
+
+model Participant {
+  address         String   @id
+  participantType String
+  name            String
+  jurisdiction    String
+  active          Boolean  @default(true)
+  registeredAt    DateTime
+
+  @@index([participantType])
+  @@index([active])
+}
+
+model NotificationSubscription {
+  id        String   @id @default(cuid())
+  address   String
+  email     String?
+  phone     String?
+  tradeId   String?
+  createdAt DateTime @default(now())
+
+  @@index([address])
+  @@index([tradeId])
+}
+
+model IndexerCursor {
+  id        Int      @id @default(1)
+  cursor    String
+  updatedAt DateTime @updatedAt
+}
+
+enum TradeStatus {
+  PendingEscrow
+  Active
+  DocumentsPending
+  Settled
+  Cancelled
+  Expired
+}
+
+enum DocType {
+  BillOfLading
+  CertificateOfOrigin
+  InspectionCertificate
+  PhytosanitaryCertificate
+  CustomsDeclaration
+}
