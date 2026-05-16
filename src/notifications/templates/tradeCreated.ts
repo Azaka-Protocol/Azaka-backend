@@ -14,6 +14,8 @@ export function tradeCreatedTemplate(data: TradeCreatedData): {
   sms: SmsTemplate;
 } {
   const tradeUrl = `https://azaka.finance/trade/${data.tradeId}`;
+  const exporter = data.exporter ?? 'Unknown exporter';
+  const importer = data.importer ?? 'Unknown importer';
 
   return {
     email: {
@@ -39,8 +41,8 @@ export function tradeCreatedTemplate(data: TradeCreatedData): {
     <div style="background: #f7f7f7; padding: 20px; border-radius: 6px; margin: 20px 0;">
       <p style="margin: 5px 0;"><strong>Trade ID:</strong> ${data.tradeId}</p>
       <p style="margin: 5px 0;"><strong>Amount:</strong> ${data.amount} ${data.asset}</p>
-      <p style="margin: 5px 0;"><strong>Exporter:</strong> ${data.exporter.slice(0, 8)}...${data.exporter.slice(-8)}</p>
-      <p style="margin: 5px 0;"><strong>Importer:</strong> ${data.importer.slice(0, 8)}...${data.importer.slice(-8)}</p>
+      <p style="margin: 5px 0;"><strong>Exporter:</strong> ${exporter.slice(0, 8)}...${exporter.slice(-8)}</p>
+      <p style="margin: 5px 0;"><strong>Importer:</strong> ${importer.slice(0, 8)}...${importer.slice(-8)}</p>
     </div>
     
     <p><strong>Next Step:</strong> The importer must deposit funds into escrow to activate the trade.</p>

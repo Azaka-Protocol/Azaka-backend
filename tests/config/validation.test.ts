@@ -1,7 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Config validation', () => {
   const originalEnv = process.env;
+  async function loadConfig() {
+    vi.resetModules();
+    return import('../../src/config/index');
+  }
 
   beforeEach(() => {
     // Reset modules to force config re-evaluation
@@ -12,26 +16,24 @@ describe('Config validation', () => {
     process.env = originalEnv;
   });
 
-  it('should fail when DATABASE_URL is missing', () => {
+  it('should fail when DATABASE_URL is missing', async () => {
     delete process.env.DATABASE_URL;
 
-    expect(() => {
+    await expect(async () => {
       // Force re-import to trigger validation
-      delete require.cache[require.resolve('../../src/config')];
-      require('../../src/config');
-    }).toThrow();
+      await loadConfig();
+    }).rejects.toThrow();
   });
 
-  it('should fail when API_KEY is too short', () => {
+  it('should fail when API_KEY is too short', async () => {
     process.env.API_KEY = 'short';
 
-    expect(() => {
-      delete require.cache[require.resolve('../../src/config')];
-      require('../../src/config');
-    }).toThrow();
+    await expect(async () => {
+      await loadConfig();
+    }).rejects.toThrow();
   });
 
-  it('should accept valid testnet configuration', () => {
+  it('should accept valid testnet configuration', async () => {
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
     process.env.REDIS_URL = 'redis://localhost:6379';
     process.env.HORIZON_URL = 'https://horizon-testnet.stellar.org';
@@ -47,13 +49,10 @@ describe('Config validation', () => {
     process.env.TERMII_API_KEY = 'test';
     process.env.API_KEY = 'test_api_key_with_at_least_32_chars';
 
-    expect(() => {
-      delete require.cache[require.resolve('../../src/config')];
-      require('../../src/config');
-    }).not.toThrow();
+    await expect(loadConfig()).resolves.toBeDefined();
   });
 
-  it('should use default PORT when not specified', () => {
+  it('should use default PORT when not specified', async () => {
     process.env.DATABASE_URL = 'postgresql://localhost:5432/test';
     process.env.REDIS_URL = 'redis://localhost:6379';
     process.env.HORIZON_URL = 'https://horizon-testnet.stellar.org';
@@ -70,8 +69,7 @@ describe('Config validation', () => {
     process.env.API_KEY = 'test_api_key_with_at_least_32_chars';
     delete process.env.PORT;
 
-    delete require.cache[require.resolve('../../src/config')];
-    const config = require('../../src/config').default;
+    const config = (await loadConfig()).default;
 
     expect(config.PORT).toBe(3001);
   });

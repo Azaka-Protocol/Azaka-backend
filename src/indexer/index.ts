@@ -84,7 +84,7 @@ async function startIndexer(): Promise<void> {
 
   logger.info({ cursor }, 'Starting from cursor');
 
-  while (true) {
+  for (;;) {
     try {
       // Stream operations for all contract addresses
       server

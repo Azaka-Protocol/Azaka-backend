@@ -3,6 +3,12 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+function printConfigError(message: string): void {
+  // Config validation runs before the logger is initialized.
+  // eslint-disable-next-line no-console
+  console.error(message);
+}
+
 const configSchema = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
@@ -29,10 +35,13 @@ try {
   config = configSchema.parse(process.env);
 } catch (error) {
   if (error instanceof z.ZodError) {
-    console.error('❌ Invalid environment configuration:');
+    printConfigError('❌ Invalid environment configuration:');
     error.errors.forEach((err) => {
-      console.error(`  - ${err.path.join('.')}: ${err.message}`);
+      printConfigError(`  - ${err.path.join('.')}: ${err.message}`);
     });
+    if (process.env.NODE_ENV === 'test') {
+      throw error;
+    }
     process.exit(1);
   }
   throw error;
