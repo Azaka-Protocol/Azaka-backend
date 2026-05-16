@@ -1,4 +1,4 @@
-import { TradeStatus } from '@prisma/client';
+import { Prisma, TradeStatus } from '@prisma/client';
 import prisma from '../../db/client';
 import { logger } from '../../utils/logger';
 import { ParsedContractEvent } from '../../types';
@@ -25,7 +25,7 @@ export async function handleTradeExpired(event: ParsedContractEvent): Promise<vo
         tradeId,
         eventType: 'TradeExpired',
         actor,
-        meta: data,
+        meta: data as Prisma.InputJsonObject,
         ledger,
         timestamp,
       },

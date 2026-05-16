@@ -89,6 +89,26 @@ To replay historical events from Stellar Testnet:
 
 ## Development Workflow
 
+## Alpha Contribution Map
+
+Azaka API is currently scoped to a 40% alpha implementation. Run the API and visit:
+
+```bash
+curl http://localhost:3001/capabilities
+```
+
+Use the `planned` list as the source of truth for contributor-ready work. Each item includes the protocol area, related contract events, and a short implementation hint.
+
+Good first protocol contributions:
+- `document-onchain-indexing`: persist `DocumentSubmitted` events and add malformed-event tests.
+- `document-signature-verification`: accumulate signers instead of marking a document verified optimistically.
+- `settlement-release`: enable `TradeSettled` indexing after the contract performs document verification and escrow release.
+- `cancellation-refund`: add cancellation/refund state transition tests before enabling the handler.
+- `expiry-monitoring`: define current-ledger sourcing before running expiry jobs in production.
+- `registry-authorisation-indexing`: add registry lifecycle handlers once contract events exist.
+
+When promoting a planned capability, update `src/protocol/capabilities.ts`, wire the handler or route, and add tests that prove the boundary moved intentionally.
+
 ### Running Tests
 
 ```bash

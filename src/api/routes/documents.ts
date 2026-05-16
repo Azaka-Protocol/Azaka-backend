@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import multer from 'multer';
 import crypto from 'crypto';
 import prisma from '../../db/client';
@@ -7,7 +7,7 @@ import { requireApiKey } from '../middleware/auth';
 import { ApiResponse, DocumentUploadResponse } from '../../types';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Configure multer for file uploads (20MB max)
 const upload = multer({
@@ -15,7 +15,7 @@ const upload = multer({
   limits: {
     fileSize: 20 * 1024 * 1024, // 20MB
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     const allowedMimes = ['application/pdf', 'image/jpeg', 'image/png'];
     if (allowedMimes.includes(file.mimetype)) {
       cb(null, true);

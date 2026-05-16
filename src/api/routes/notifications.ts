@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import prisma from '../../db/client';
 import { requireApiKey } from '../middleware/auth';
 import { ApiResponse } from '../../types';
 import { logger } from '../../utils/logger';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // POST /notifications/subscribe - Subscribe to notifications
 router.post('/subscribe', requireApiKey, async (req, res) => {

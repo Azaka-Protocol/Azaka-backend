@@ -6,6 +6,30 @@
 
 Optional infrastructure backend for the Azaka decentralized trade finance protocol. This service handles the three things Soroban smart contracts cannot do well: **document storage**, **event-driven notifications**, and **fast indexed queries**.
 
+## Alpha Scope: 40% Implemented
+
+This backend intentionally mirrors only the stable alpha slice of the Soroban contracts so open-source contributors have clear ownership areas. The current implementation boundary is exposed at:
+
+```bash
+curl http://localhost:3001/capabilities
+```
+
+Implemented now:
+- Trade creation indexing and trade query APIs
+- Escrow deposit indexing and exporter notification
+- Document upload, SHA-256 hashing, and IPFS pinning
+- Participant read model lookup
+
+Planned contributor areas:
+- On-chain document submission indexing
+- Signature accumulation and required approval checks
+- Settlement and escrow release indexing
+- Cancellation and refund indexing
+- Expiry monitoring and expiry event indexing
+- Registry authorization lifecycle indexing
+
+Planned contract events are deliberately skipped by the alpha indexer until their handlers and tests are promoted from contributor scaffolding.
+
 ## What This Service Does (and Doesn't Do)
 
 **Does:**
@@ -114,6 +138,7 @@ All endpoints return JSON in the format:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/health` | Health check with indexer lag |
+| `GET` | `/capabilities` | Alpha capability map and contributor roadmap |
 | `GET` | `/trades` | List trades (paginated, filterable) |
 | `GET` | `/trades/:id` | Get trade details |
 | `GET` | `/trades/:id/timeline` | Get trade event timeline |

@@ -80,6 +80,7 @@ export interface NotificationTemplate {
 export interface HealthStatus {
   status: 'ok' | 'degraded' | 'down';
   indexerLag: number;
+  implementationPercentage: number;
   timestamp: Date;
 }
 

@@ -2,7 +2,7 @@ import prisma from '../../db/client';
 import { logger } from '../../utils/logger';
 import { ParsedContractEvent } from '../../types';
 import { enqueueNotification } from '../../jobs';
-import { DocType } from '@prisma/client';
+import { DocType, Prisma } from '@prisma/client';
 
 export async function handleDocumentSubmitted(event: ParsedContractEvent): Promise<void> {
   const { tradeId, data, ledger, timestamp, actor } = event;
@@ -39,7 +39,7 @@ export async function handleDocumentSubmitted(event: ParsedContractEvent): Promi
         tradeId,
         eventType: 'DocumentSubmitted',
         actor,
-        meta: data,
+        meta: data as Prisma.InputJsonObject,
         ledger,
         timestamp,
       },

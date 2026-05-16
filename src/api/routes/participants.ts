@@ -1,8 +1,8 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import prisma from '../../db/client';
 import { ApiResponse } from '../../types';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // GET /participants/:address - Get participant details
 router.get('/:address', async (req, res) => {

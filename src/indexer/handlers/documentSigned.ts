@@ -2,6 +2,7 @@ import prisma from '../../db/client';
 import { logger } from '../../utils/logger';
 import { ParsedContractEvent } from '../../types';
 import { enqueueNotification } from '../../jobs';
+import { Prisma } from '@prisma/client';
 
 export async function handleDocumentSigned(event: ParsedContractEvent): Promise<void> {
   const { tradeId, data, ledger, timestamp, actor } = event;
@@ -40,7 +41,7 @@ export async function handleDocumentSigned(event: ParsedContractEvent): Promise<
         tradeId,
         eventType: 'DocumentSigned',
         actor,
-        meta: data,
+        meta: data as Prisma.InputJsonObject,
         ledger,
         timestamp,
       },

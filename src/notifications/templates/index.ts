@@ -14,8 +14,8 @@ const templates: Record<
   string,
   (data: TemplateData) => { email: EmailTemplate; sms: SmsTemplate }
 > = {
-  tradeCreated: tradeCreatedTemplate,
-  escrowDeposited: escrowDepositedTemplate,
+  tradeCreated: (data) => tradeCreatedTemplate(data as Parameters<typeof tradeCreatedTemplate>[0]),
+  escrowDeposited: (data) => escrowDepositedTemplate(data as Parameters<typeof escrowDepositedTemplate>[0]),
   documentRequired: documentRequiredTemplate,
   documentSubmitted: documentRequiredTemplate, // Reuse same template
   tradeSettled: tradeSettledTemplate,

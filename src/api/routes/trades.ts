@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import prisma from '../../db/client';
 import { ApiResponse, PaginatedResponse, TradeWithSummary, TimelineEvent } from '../../types';
 import { TradeStatus } from '@prisma/client';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // GET /trades - List trades with filters and pagination
 router.get('/', async (req, res) => {

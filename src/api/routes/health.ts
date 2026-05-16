@@ -1,10 +1,11 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { getLastCursorUpdate } from '../../indexer/cursor';
 import { ApiResponse, HealthStatus } from '../../types';
+import { PROTOCOL_IMPLEMENTATION_PERCENTAGE } from '../../protocol/capabilities';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const lastUpdate = await getLastCursorUpdate();
     
@@ -32,6 +33,7 @@ router.get('/', async (req, res) => {
       data: {
         status,
         indexerLag,
+        implementationPercentage: PROTOCOL_IMPLEMENTATION_PERCENTAGE,
         timestamp: new Date(),
       },
     };

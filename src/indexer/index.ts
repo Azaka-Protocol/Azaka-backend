@@ -1,15 +1,14 @@
-import { Server } from 'stellar-sdk';
+import { Horizon } from '@stellar/stellar-sdk';
 import config from '../config';
 import { logger } from '../utils/logger';
 import { getCursor, saveCursor } from './cursor';
 import { handleTradeCreated } from './handlers/tradeCreated';
 import { handleEscrowDeposited } from './handlers/escrowDeposited';
-import { handleDocumentSubmitted } from './handlers/documentSubmitted';
-import { handleDocumentSigned } from './handlers/documentSigned';
-import { handleTradeSettled } from './handlers/tradeSettled';
-import { handleTradeCancelled } from './handlers/tradeCancelled';
-import { handleTradeExpired } from './handlers/tradeExpired';
 import { HorizonEvent, ParsedContractEvent } from '../types';
+import {
+  PROTOCOL_IMPLEMENTATION_PERCENTAGE,
+  isProtocolEventImplemented,
+} from '../protocol/capabilities';
 
 const BATCH_SIZE = 100;
 const INITIAL_BACKOFF_MS = 1000;
@@ -25,11 +24,6 @@ const contractIds = [
 const eventHandlers: Record<string, (event: ParsedContractEvent) => Promise<void>> = {
   TradeCreated: handleTradeCreated,
   EscrowDeposited: handleEscrowDeposited,
-  DocumentSubmitted: handleDocumentSubmitted,
-  DocumentSigned: handleDocumentSigned,
-  TradeSettled: handleTradeSettled,
-  TradeCancelled: handleTradeCancelled,
-  TradeExpired: handleTradeExpired,
 };
 
 function parseContractEvent(horizonEvent: HorizonEvent): ParsedContractEvent | null {
@@ -61,10 +55,18 @@ async function processEvent(event: HorizonEvent): Promise<void> {
     return;
   }
 
+  if (!isProtocolEventImplemented(parsedEvent.eventType)) {
+    logger.info(
+      { eventType: parsedEvent.eventType, tradeId: parsedEvent.tradeId },
+      'Skipping planned protocol event in alpha backend'
+    );
+    return;
+  }
+
   const handler = eventHandlers[parsedEvent.eventType];
-  
+
   if (!handler) {
-    logger.debug({ eventType: parsedEvent.eventType }, 'No handler for event type');
+    logger.warn({ eventType: parsedEvent.eventType }, 'Implemented event has no registered handler');
     return;
   }
 
@@ -72,10 +74,10 @@ async function processEvent(event: HorizonEvent): Promise<void> {
 }
 
 async function startIndexer(): Promise<void> {
-  logger.info('Starting Azaka indexer');
+  logger.info({ implementationPercentage: PROTOCOL_IMPLEMENTATION_PERCENTAGE }, 'Starting Azaka alpha indexer');
   logger.info({ contracts: contractIds }, 'Monitoring contract addresses');
 
-  const server = new Server(config.HORIZON_URL);
+  const server = new Horizon.Server(config.HORIZON_URL);
   let cursor = await getCursor();
   let backoffMs = INITIAL_BACKOFF_MS;
   let eventCount = 0;
@@ -85,39 +87,44 @@ async function startIndexer(): Promise<void> {
   while (true) {
     try {
       // Stream operations for all contract addresses
-      const operationsStream = server
+      server
         .operations()
         .cursor(cursor)
         .limit(BATCH_SIZE)
         .stream({
-          onmessage: async (event: HorizonEvent) => {
-            try {
-              // Filter for contract events from our contracts
-              if (event.type === 'invoke_host_function' && event.contract) {
-                if (contractIds.includes(event.contract)) {
-                  await processEvent(event);
-                  eventCount++;
+          onmessage: (event: unknown) => {
+            void (async () => {
+              const horizonEvent = event as HorizonEvent;
+
+              try {
+                // Filter for contract events from our contracts
+                if (horizonEvent.type === 'invoke_host_function' && horizonEvent.contract) {
+                  if (contractIds.includes(horizonEvent.contract)) {
+                    await processEvent(horizonEvent);
+                    eventCount++;
+                  }
                 }
-              }
 
-              // Update cursor after processing
-              cursor = event.id;
-              
-              // Save cursor every 10 events to balance reliability and performance
-              if (eventCount % 10 === 0) {
-                await saveCursor(cursor);
-                logger.debug({ cursor, eventCount }, 'Cursor checkpoint saved');
-              }
+                // Update cursor after processing
+                cursor = horizonEvent.id;
 
-              // Reset backoff on successful processing
-              backoffMs = INITIAL_BACKOFF_MS;
-            } catch (error) {
-              logger.error({ error, eventId: event.id }, 'Error processing event');
-              // Don't throw - log and continue to next event
-            }
+                // Save cursor every 10 events to balance reliability and performance
+                if (eventCount % 10 === 0) {
+                  await saveCursor(cursor);
+                  logger.debug({ cursor, eventCount }, 'Cursor checkpoint saved');
+                }
+
+                // Reset backoff on successful processing
+                backoffMs = INITIAL_BACKOFF_MS;
+              } catch (error) {
+                logger.error({ error, eventId: horizonEvent.id }, 'Error processing event');
+                // Don't throw - log and continue to next event
+              }
+            })();
           },
-          onerror: (error: Error) => {
-            logger.error({ error }, 'Horizon stream error');
+          onerror: (errorEvent: unknown) => {
+            const error = errorEvent instanceof Error ? errorEvent : new Error('Horizon stream error');
+            logger.error({ error: errorEvent }, 'Horizon stream error');
             throw error;
           },
         });

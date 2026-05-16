@@ -11,6 +11,7 @@ import tradesRouter from './routes/trades';
 import documentsRouter from './routes/documents';
 import participantsRouter from './routes/participants';
 import notificationsRouter from './routes/notifications';
+import capabilitiesRouter from './routes/capabilities';
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.use(express.json());
 app.use(rateLimiter);
 
 // Request logging
-app.use((req, res, next) => {
+app.use((req, _res, next) => {
   logger.info({ method: req.method, path: req.path }, 'Incoming request');
   next();
 });
@@ -31,9 +32,10 @@ app.use('/trades', tradesRouter);
 app.use('/documents', documentsRouter);
 app.use('/participants', participantsRouter);
 app.use('/notifications', notificationsRouter);
+app.use('/capabilities', capabilitiesRouter);
 
 // 404 handler
-app.use((req, res) => {
+app.use((_req, res) => {
   res.status(404).json({
     success: false,
     error: 'Not found',

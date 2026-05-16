@@ -1,4 +1,4 @@
-import { TradeStatus } from '@prisma/client';
+import { DocType, Prisma, TradeStatus } from '@prisma/client';
 import prisma from '../../db/client';
 import { logger } from '../../utils/logger';
 import { ParsedContractEvent } from '../../types';
@@ -25,7 +25,7 @@ export async function handleTradeCreated(event: ParsedContractEvent): Promise<vo
         asset: data.asset as string,
         amount: data.amount as string,
         status: TradeStatus.PendingEscrow,
-        requiredDocs: data.requiredDocs as string[],
+        requiredDocs: data.requiredDocs as DocType[],
         expiryLedger: data.expiryLedger as number,
         createdAt: timestamp,
       },
@@ -37,7 +37,7 @@ export async function handleTradeCreated(event: ParsedContractEvent): Promise<vo
         tradeId,
         eventType: 'TradeCreated',
         actor,
-        meta: data,
+        meta: data as Prisma.InputJsonObject,
         ledger,
         timestamp,
       },
