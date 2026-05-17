@@ -1,240 +1,280 @@
-# Contributing to Azaka API
+# Contributing to Azaka Backend
 
-Thank you for your interest in contributing to Azaka API! This document provides guidelines and instructions for contributing.
+Thank you for helping improve [Azaka-backend](https://github.com/Azaka-Protocol/Azaka-backend).
 
-## Local Setup
+This service is the optional off-chain companion to the Soroban protocol in **[Azaka-contracts](https://github.com/Azaka-Protocol/Azaka-contracts)**. Before changing indexer behavior or API shapes, skim the contracts repo so your work stays aligned with on-chain events and state machines.
+
+## Code of conduct
+
+Participate respectfully and constructively. Harassment, discrimination, and bad-faith disruption are not tolerated. Maintainers may close issues or reject contributions that violate these expectations.
+
+## Ways to contribute
+
+- **Code changes** — fork the repository, push your branch to your fork, and open a pull request into `Azaka-Protocol/Azaka-backend`. We do not accept direct pushes from outside contributors to the upstream repo. See [Submitting changes](#submitting-changes-fork--pull-request).
+- **Report bugs** — [open an issue](https://github.com/Azaka-Protocol/Azaka-backend/issues/new) with steps to reproduce, expected vs actual behavior, and environment (Node, network, contract IDs).
+- **Suggest features** — open an issue describing the use case and how it maps to protocol capabilities (optional but helpful before a large PR).
+- **Pick up alpha work** — use `/capabilities` and the [alpha contribution map](#alpha-contribution-map) below.
+- **Fix docs or CI** — same fork → PR workflow as code changes.
+- **Smart contract changes** — belong in [Azaka-contracts](https://github.com/Azaka-Protocol/Azaka-contracts); open a PR there. Coordinate here only for indexer/API follow-up in this repo.
+
+## Local development setup
 
 ### Prerequisites
 
-- Node.js 20+
-- pnpm 8+
+- Node.js 20+ (`corepack enable` recommended)
+- pnpm 8+ (`corepack prepare pnpm@8 --activate`)
 - PostgreSQL 16+
 - Redis 7+
 
-### Setup Without Docker
+### Fork and clone
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/azaka/azaka-api.git
-   cd azaka-api
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-
-3. **Start PostgreSQL and Redis**
-   ```bash
-   # macOS with Homebrew
-   brew services start postgresql@16
-   brew services start redis
-
-   # Linux with systemd
-   sudo systemctl start postgresql
-   sudo systemctl start redis
-   ```
-
-4. **Configure environment**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your local configuration
-   ```
-
-5. **Run database migrations**
-   ```bash
-   pnpm prisma migrate dev
-   pnpm prisma generate
-   ```
-
-6. **Start the services**
-   ```bash
-   # Terminal 1: API server
-   pnpm api
-
-   # Terminal 2: Indexer
-   pnpm indexer
-   ```
-
-### Setup With Docker
+1. **Fork** [Azaka-backend](https://github.com/Azaka-Protocol/Azaka-backend) on GitHub (Fork → create under your account).
+2. **Clone your fork** (replace `YOUR_GITHUB_USERNAME`):
 
 ```bash
-docker-compose -f docker/docker-compose.yml up
+git clone https://github.com/YOUR_GITHUB_USERNAME/Azaka-backend.git
+cd Azaka-backend
+git remote add upstream https://github.com/Azaka-Protocol/Azaka-backend.git
+pnpm install
 ```
 
-## Pointing the Indexer at Stellar Testnet
+Use `upstream` to sync with the canonical repo before you branch or open a PR.
 
-To replay historical events from Stellar Testnet:
+### Environment
 
-1. **Get a starting cursor**
-   
-   Visit Horizon to find a ledger cursor:
-   ```
-   https://horizon-testnet.stellar.org/ledgers?order=desc&limit=1
-   ```
+```bash
+cp .env.example .env
+```
 
-2. **Manually set the cursor in the database**
-   ```sql
-   INSERT INTO "IndexerCursor" (id, cursor, "updatedAt")
-   VALUES (1, 'your-cursor-here', NOW())
-   ON CONFLICT (id) DO UPDATE SET cursor = 'your-cursor-here';
-   ```
+For local indexing against testnet, deploy or obtain contract IDs from [Azaka-contracts](https://github.com/Azaka-Protocol/Azaka-contracts) and set `TRADE_CONTRACT_ID`, `ESCROW_CONTRACT_ID`, `DOCUMENT_CONTRACT_ID`, and `REGISTRY_CONTRACT_ID`.
 
-3. **Start the indexer**
-   ```bash
-   pnpm indexer
-   ```
+### Database
 
-   The indexer will begin processing events from that cursor forward.
+```bash
+pnpm prisma migrate dev
+pnpm prisma generate
+```
 
-## Development Workflow
+### Run services
 
-## Alpha Contribution Map
+**With Docker (recommended for first run):**
 
-Azaka API is currently scoped to a 40% alpha implementation. Run the API and visit:
+```bash
+docker compose -f docker/docker-compose.yml up
+```
+
+**Without Docker:**
+
+```bash
+# Terminal 1
+pnpm api
+
+# Terminal 2
+pnpm indexer
+```
+
+Or `pnpm dev` after `pnpm setup`.
+
+### Point the indexer at Stellar testnet
+
+1. Find a starting cursor from Horizon, e.g.  
+   `https://horizon-testnet.stellar.org/ledgers?order=desc&limit=1`
+2. Seed the cursor in Postgres (see `IndexerCursor` in `prisma/schema.prisma`).
+3. Start the indexer: `pnpm indexer`
+
+Details and examples are in [GETTING_STARTED.md](./GETTING_STARTED.md).
+
+## Alpha contribution map
+
+Azaka Backend targets a ~40% **alpha** implementation. The source of truth for what is implemented vs planned:
 
 ```bash
 curl http://localhost:3001/capabilities
 ```
 
-Use the `planned` list as the source of truth for contributor-ready work. Each item includes the protocol area, related contract events, and a short implementation hint.
+Code mirror: `src/protocol/capabilities.ts`.
 
-Good first protocol contributions:
-- `document-onchain-indexing`: persist `DocumentSubmitted` events and add malformed-event tests.
-- `document-signature-verification`: accumulate signers instead of marking a document verified optimistically.
-- `settlement-release`: enable `TradeSettled` indexing after the contract performs document verification and escrow release.
-- `cancellation-refund`: add cancellation/refund state transition tests before enabling the handler.
-- `expiry-monitoring`: define current-ledger sourcing before running expiry jobs in production.
-- `registry-authorisation-indexing`: add registry lifecycle handlers once contract events exist.
+**Good first protocol contributions:**
 
-When promoting a planned capability, update `src/protocol/capabilities.ts`, wire the handler or route, and add tests that prove the boundary moved intentionally.
+| Capability ID | Focus |
+|---------------|--------|
+| `document-onchain-indexing` | Persist `DocumentSubmitted` events; add malformed-event tests |
+| `document-signature-verification` | Accumulate signers; avoid optimistic verification |
+| `settlement-release` | Enable `TradeSettled` indexing after contract release path is stable |
+| `cancellation-refund` | Cancellation/refund state transitions and tests |
+| `expiry-monitoring` | Reliable current-ledger sourcing before production expiry jobs |
+| `registry-authorisation-indexing` | Registry lifecycle handlers when contract events exist |
 
-### Running Tests
+When promoting a planned capability:
+
+1. Update `src/protocol/capabilities.ts` (`implemented` vs `planned`).
+2. Wire the indexer handler and/or API route.
+3. Add tests that prove the boundary moved intentionally.
+4. Mention the capability ID in your PR description.
+
+## Submitting changes (fork → pull request)
+
+All contributions are merged via **pull requests from forks**, not by pushing branches to `Azaka-Protocol/Azaka-backend` unless you are a maintainer with write access.
+
+### 1. Sync your fork with upstream
 
 ```bash
-# Run all tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Run with coverage
-pnpm test -- --coverage
+git fetch upstream
+git checkout main
+git merge upstream/main
+# or: git rebase upstream/main
+git push origin main
 ```
 
-### Type Checking
+### 2. Create a topic branch
+
+Branch from up-to-date `main` on your fork:
 
 ```bash
-pnpm typecheck
+git checkout -b feature/short-description
+# examples: fix/issue-42-indexer-cursor, docs/contributing-fork-workflow
 ```
 
-### Linting
+Keep PRs focused; split large changes when possible.
+
+### 3. Develop and verify locally
+
+Make your changes, then run the [CI-matching commands](#commands-match-ci) below.
+
+### 4. Commit and push to your fork
 
 ```bash
-# Check for issues
-pnpm lint
-
-# Auto-fix issues
-pnpm lint:fix
+git add .
+git commit -m "feat: describe your change clearly"
+git push origin feature/short-description
 ```
 
-### Database Changes
+### 5. Open a pull request
 
-When modifying the Prisma schema:
+On GitHub: **your fork** → branch `feature/...` → base repository **Azaka-Protocol/Azaka-backend**, base branch **`main`**.
+
+- Use a clear title and description.
+- Link issues (`Fixes #123`) and any [capability ID](#alpha-contribution-map) you implemented.
+- Ensure CI checks pass on the PR (they run automatically).
+
+Maintainers will review, request changes if needed, and merge when ready. After merge, you can delete your topic branch and sync `main` on your fork again.
+
+## Development workflow
+
+### Branching
+
+- Always branch from `upstream/main` (or your fork’s `main` after syncing with upstream).
+- Use descriptive names: `feature/...`, `fix/...`, `docs/...`.
+
+### Commands (match CI)
 
 ```bash
-# Create a migration
-pnpm prisma migrate dev --name your_migration_name
-
-# Generate Prisma client
+pnpm install --frozen-lockfile
 pnpm prisma generate
-
-# View database in Prisma Studio
-pnpm db:studio
+pnpm typecheck
+pnpm lint
+pnpm test
 ```
 
-## Pull Request Checklist
+With Postgres available (as in CI):
 
-Before submitting a PR, ensure:
+```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/azaka_test \
+  pnpm prisma migrate deploy
+```
 
-- [ ] **Types pass**: `pnpm typecheck` runs without errors
-- [ ] **Tests pass**: `pnpm test` runs successfully
-- [ ] **Lint clean**: `pnpm lint` shows no errors
-- [ ] **No secrets committed**: Check for API keys, passwords, or tokens
-- [ ] **Migrations included**: If you changed the schema, include the migration
-- [ ] **Tests added**: New features should include tests
-- [ ] **Documentation updated**: Update README.md if adding new features
+### Database schema changes
 
-## Code Style
+```bash
+pnpm prisma migrate dev --name describe_your_change
+pnpm prisma generate
+```
 
-- **No `any` types**: Use strict TypeScript throughout
-- **Structured logging**: Use `logger` from `src/utils/logger.ts` with context
-- **Error handling**: Never let the indexer crash on malformed events
-- **Prisma only**: All database queries go through Prisma (no raw SQL except cursor upsert)
-- **Async/await**: Prefer async/await over promises
+Commit the generated migration under `prisma/migrations/`.
 
-### Example: Good Logging
+## Pull request checklist
+
+Before requesting review:
+
+- [ ] `pnpm typecheck` passes
+- [ ] `pnpm test` passes
+- [ ] `pnpm lint` passes
+- [ ] No secrets, `.env` files, or API keys in the diff
+- [ ] Schema changes include a Prisma migration
+- [ ] New behavior has tests where practical
+- [ ] README or CONTRIBUTING updated if you change setup, env vars, or public API
+- [ ] PR description links related issues (`Fixes #123`) and notes any capability ID from the alpha map
+
+## Code style
+
+- **TypeScript:** strict typing; no `any` (enforced by ESLint).
+- **Logging:** use `logger` from `src/utils/logger.ts` with structured context.
+- **Indexer handlers:** must not crash the process on malformed events — log and continue.
+- **Database:** use Prisma; avoid raw SQL except documented cases (e.g. cursor upsert).
+- **Async:** prefer `async`/`await`.
+
+Example:
 
 ```typescript
 logger.info({ tradeId, actor, eventType }, 'Processing event');
-logger.error({ error, tradeId }, 'Failed to process event');
-```
 
-### Example: Error Handling in Indexer
-
-```typescript
 try {
   await processEvent(event);
 } catch (error) {
   logger.error({ error, eventId: event.id }, 'Failed to process event');
-  // Don't throw - log and continue to avoid crashing the indexer
 }
 ```
 
-## Issue Labels
+## Issue labels
 
-- **good first issue**: Good for newcomers
-- **indexer**: Related to event indexing
-- **notifications**: Email/SMS notifications
-- **api**: REST API endpoints
-- **infra**: Docker, CI/CD, deployment
-- **bug**: Something isn't working
-- **enhancement**: New feature or request
+Maintainers may use labels such as:
 
-## Architecture Notes
+| Label | Meaning |
+|-------|---------|
+| `good first issue` | Suitable for newcomers |
+| `indexer` | Horizon / event handling |
+| `notifications` | Email or SMS |
+| `api` | REST routes |
+| `infra` | Docker, CI, deployment |
+| `bug` | Incorrect behavior |
+| `enhancement` | New feature or improvement |
 
-### Cursor Persistence
+## Architecture notes
 
-The indexer's cursor persistence is **critical** for reliability. If the cursor doesn't survive restarts cleanly, events will be missed and trades will silently stall.
+### Cursor persistence
 
-Key points:
-- Cursor is saved every 10 events (balance between reliability and performance)
-- Uses upsert to handle both initial save and updates
-- Must never fail silently — errors are logged as CRITICAL
-- On restart, indexer resumes from last saved cursor
+The indexer cursor must survive restarts. If it does not, events are skipped and trades can stall silently.
 
-### Stateless Design
+- Cursor is persisted periodically during streaming.
+- Uses upsert for idempotent updates.
+- Failures must be logged clearly; on restart, processing resumes from the last saved cursor.
 
-The API and indexer are designed to be stateless (except for Postgres and Redis). Multiple instances can run in parallel safely. This enables:
-- Horizontal scaling
-- Zero-downtime deployments
-- Resilience to instance failures
+### Stateless processes
 
-### Event Handlers
+API and indexer instances are stateless aside from Postgres and Redis, so you can run multiple replicas behind a load balancer when operations require it.
 
-Each event handler in `src/indexer/handlers/` must:
-1. Upsert the relevant Trade record
-2. Insert a TradeEvent record
-3. Enqueue a notification job
-4. Log the event with structured logging
-5. **Never throw** — catch errors and log to avoid crashing the indexer
+### Event handlers
+
+Handlers under `src/indexer/handlers/` should:
+
+1. Upsert the relevant `Trade` (or related) record.
+2. Insert a `TradeEvent` where applicable.
+3. Enqueue notification jobs when appropriate.
+4. Log with structured fields.
+5. Catch errors — do not throw out of the stream loop.
+
+## Security
+
+**Do not** file public issues for exploitable security problems.
+
+Use [GitHub Security Advisories](https://github.com/Azaka-Protocol/Azaka-backend/security/advisories/new) for this repository. Include reproduction steps and impact; we will respond as soon as we can.
 
 ## Questions?
 
-- Open an issue for bugs or feature requests
-- Join our [Discord](https://discord.gg/azaka) for discussions
-- Check the [main Azaka repo](https://github.com/azaka/azaka-contracts) for smart contract questions
+- **Backend bugs / features:** [Azaka-backend issues](https://github.com/Azaka-Protocol/Azaka-backend/issues)
+- **Contracts / on-chain behavior:** [Azaka-contracts](https://github.com/Azaka-Protocol/Azaka-contracts)
+- **Org:** [Azaka-Protocol on GitHub](https://github.com/Azaka-Protocol)
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions are licensed under the [MIT License](./LICENSE) used by this project.
